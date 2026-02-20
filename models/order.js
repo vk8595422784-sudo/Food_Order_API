@@ -10,11 +10,24 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "delivered", "cancelled"],
       default: "pending",
     },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid", "refunded"],
+      default: "unpaid",
+    },
+    stripeSessionId: {
+      type: String,
+      default: null,
+    },
     address: String,
-    paymentMethod: String,
+    paymentMethod: {
+      type: String,
+      enum: ["stripe", "cod"],
+      default: "cod",
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-const Order = mongoose.model("Order",orderSchema)
-export default Order
+const Order = mongoose.model("Order", orderSchema);
+export default Order;

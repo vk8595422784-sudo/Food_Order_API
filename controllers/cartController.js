@@ -1,60 +1,157 @@
-import Cart from '../models/cart.js'
-import Food from '../models/food.js'
+import Cart from "../models/cart.js";
+import Food from "../models/food.js";
 
-export const addToCart = async (req,res)=>{
-  const {foodId,quantity} = req.body
+export const addToCart = async (req, res) => {
+  try {
+    const { foodId, quantity } = req.body;
 
-  const food = Food.findById(foodId)
+    // Validate inputs
+    if (!foodId || !quantity) {
+      return res.status(400).json({
+        status: "fail",
+        data: null,
+        message: "foodId and quantity are required",
+      });
+    }
+    if (typeof quantity !== "number" || quantity < 1) {
+      return res.status(400).json({
+        status: "fail",
+        data: null,
+        message: "quantity must be a positive number",
+      });
+    }
 
-  if(!food){
-    return res.status(404).json({
+    const food = await Food.findById(foodId);
+    if (!food) {
+      return res.status(404).json({
+        status: "fail",
+        data: null,
+        message: "Food item not found",
+      });
+    }
+
+    if (!food.available) {
+      return res.status(400).json({
+        status: "fail",
+        data: null,
+        message: "Food item is currently unavailable",
+      });
+    }
+
+    let cart = await Cart.findOne({ userId: req.user._id });
+    if (!cart) {
+      cart = await Cart.create({ userId: req.user._id, items: [] });
+    }
+
+    const existingItem = cart.items.find((i) => i.foodId.toString() === foodId);
+    if (existingItem) {
+      existingItem.quantity += quantity;
+    } else {
+      cart.items.push({ foodId, quantity, priceSnapshot: food.price });
+    }
+
+    await cart.save();
+
+    return res.status(200).json({
+      status: "success",
+      data: cart,
+      message: "Cart updated",
+    });
+  } catch (error) {
+    return res.status(500).json({
       status: "fail",
       data: null,
-      message: "food not found"
-    })
+      message: error.message,
+    });
   }
-  let cart = await Cart.findOne({userId: req.user._id})
+};
 
-  if(!cart){
-    cart = await Cart.create({
-      userId:req.user._id,
-      items: []
-    })
+export const getCart = async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ userId: req.user._id }).populate(
+      "items.foodId",
+    );
+
+    return res.status(200).json({
+      status: "success",
+      data: cart || { items: [] },
+      message: "Cart fetched",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "fail",
+      data: null,
+      message: error.message,
+    });
   }
+};
 
-  const item = cart.items.find((i)=> i.foodId.toString() === foodId)
-  if(item) item.quantity += quantity
-  else cart.items.push({foodId,quantity,priceSnapshot: food.price})
+export const removeItem = async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ userId: req.user._id });
 
-  await cart.save()
+    if (!cart) {
+      return res.status(404).json({
+        status: "fail",
+        data: null,
+        message: "Cart not found",
+      });
+    }
 
-  res.json({
-    status: "success",
-    data: cart,
-    message: "Cart Updated",
-  });
-}
+    const initialLength = cart.items.length;
+    cart.items = cart.items.filter(
+      (i) => i.foodId.toString() !== req.params.foodId,
+    );
 
-export const getCart = async (req,res) =>{
-  const cart = await Cart.findOne({userId:req.user._id}).populate("items.foodId")
+    if (cart.items.length === initialLength) {
+      return res.status(404).json({
+        status: "fail",
+        data: null,
+        message: "Item not found in cart",
+      });
+    }
 
-    res.json({ status: "success", data: cart, message: "cart fetched" });
-}
+    await cart.save();
 
-export const  removeItem = async (req,res)=>{
-  const cart = await Cart.findOne({userId:req.user._id})
-  cart.items = cart.items.filter((i)=> i.foodId.toString() !== req.params.foodId)
+    return res.status(200).json({
+      status: "success",
+      data: cart,
+      message: "Item removed from cart",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "fail",
+      data: null,
+      message: error.message,
+    });
+  }
+};
 
-  await cart.save()
+export const clearCart = async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ userId: req.user._id });
 
-  res.json({ status: "success", data: cart, message: "item removed" });
-}
+    if (!cart) {
+      return res.status(404).json({
+        status: "fail",
+        data: null,
+        message: "Cart not found",
+      });
+    }
 
-export const clearCart = async (req,res)=>{
-  const cart = await Cart.findOne({userId:req.user._id})
-  cart.items = []
-  await cart.save()
+    cart.items = [];
+    await cart.save();
 
-  res.json({ status: "success", data: cart, message: "cart cleared" });
-}
-
+    return res.status(200).json({
+      status: "success",
+      data: cart,
+      message: "Cart cleared",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "fail",
+      data: null,
+      message: error.message,
+    });
+  }
+};

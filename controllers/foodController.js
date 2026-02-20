@@ -1,60 +1,60 @@
-import Food from '../models/food.js'
+import Food from "../models/food.js";
 
+export const getFood = async (req, res) => {
+  const filter = {};
 
-export const getFood = async (req, res)=>{
-  const filter = {}
+  if (req.query.category) filter.category = req.query.category;
+  if (req.query.available) filter.available = req.query.available === "true";
 
-  if(req.query.category) filter.category = req.query.category
-  if(req.query.available) filter.available = req.query.available === "true"
-
-  const foods = await Food.find(filter)
+  const foods = await Food.find(filter);
 
   res.json({
-    status:"success",
+    status: "success",
     data: foods,
-    message: "food fetched"
-  })
-}
+    message: "food fetched",
+  });
+};
 
-export const createFood = async (req,res)=>{
-  if(req.user.role !== "admin"){
+export const createFood = async (req, res) => {
+  if (req.user.role !== "admin") {
     return res
-    .status(403)
-    .json({status:"fail", data: null, message: "Admin only"})
+      .status(403)
+      .json({ status: "fail", data: null, message: "Admin only" });
   }
 
-  const {name, price} = req.body
+  const { name, price } = req.body;
 
-  if(!name || !price){
+  if (!name || !price) {
     return res
-    .status(400)
-    .json({status:"fail",data: null, message: "Missing field"})
+      .status(400)
+      .json({ status: "fail", data: null, message: "Missing field" });
   }
 
-  const food = Food.create(req.body)
+  const food = await Food.create(req.body);
   res.json({
     status: "success",
     data: food,
-    message: "Food Created"
-  })
-}
+    message: "Food Created",
+  });
+};
 
-export const updateFood = async (req,res)=>{
-  if(req.user.role !== "admin"){
+export const updateFood = async (req, res) => {
+  if (req.user.role !== "admin") {
     return res
-    .status(403)
-    .json({ status: "fail", data: null, message: "Admin Only"})
+      .status(403)
+      .json({ status: "fail", data: null, message: "Admin Only" });
   }
 
-  const food = await Food.findByIdAndUpdate(req.params.id, req.body,{new:true})
+  const food = await Food.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+  });
 
   res.json({
-    status:"success",
+    status: "success",
     data: food,
-    message: "Food Updated"
-  })
-}
-
+    message: "Food Updated",
+  });
+};
 
 export const deleteFood = async (req, res) => {
   if (req.user.role !== "admin") {
